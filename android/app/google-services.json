@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "578145199895",
+    "project_id": "flutterfilepicker-56501",
+    "storage_bucket": "flutterfilepicker-56501.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:578145199895:android:3cfed03aa8bf3b81a9f952",
+        "android_client_info": {
+          "package_name": "com.example.flutter_filepicker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZpRJ8I0BRmW7XYoUobSomKmS0eXy3toQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
