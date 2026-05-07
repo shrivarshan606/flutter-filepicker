@@ -167,84 +167,79 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
 
   // ── Drop zone ───────────────────────────────────────────────────────────────
   Widget _buildDropZone() {
-    return DottedBorder(
-      options: RoundedRectDottedBorderOptions(
-        radius: const Radius.circular(20),
-        strokeWidth: 1.8,
-        color: Colors.blue.shade400,
-        dashPattern: const [8, 6],
-      ),
-      child: Material(
-        color: Colors.transparent,
+  return DottedBorder(
+    borderType: BorderType.RRect,
+    radius: const Radius.circular(20),
+    strokeWidth: 1.8,
+    color: Colors.blue,
+    dashPattern: const [8, 6],
+    child: Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: _pickAndUpload,
-          splashColor: Colors.blue.shade50,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              children: [
-                // Upload icon circle
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.blue.shade100, Colors.blue.shade50],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
+        onTap: _pickAndUpload,
+        splashColor: Colors.blue.shade50,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue.shade100, Colors.blue.shade50],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  child: Icon(Icons.upload_file_rounded, size: 36, color: Colors.blue.shade600),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Drop files here or click to browse',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Any file type · Up to 20 MB per file',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                ),
-                const SizedBox(height: 28),
-
-                // Single / Bulk toggle chips
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _ModeChip(
-                      label: 'Single file',
-                      icon: Icons.insert_drive_file_outlined,
-                      selected: !_bulkUpload,
-                      onTap: () => setState(() => _bulkUpload = false),
-                    ),
-                    const SizedBox(width: 12),
-                    _ModeChip(
-                      label: 'Bulk upload',
-                      icon: Icons.folder_copy_outlined,
-                      selected: _bulkUpload,
-                      onTap: () => setState(() => _bulkUpload = true),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                child: Icon(Icons.upload_file_rounded, size: 36, color: Colors.blue.shade600),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Drop files here or click to browse',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Any file type · Up to 20 MB per file',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+              ),
+              const SizedBox(height: 28),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _ModeChip(
+                    label: 'Single file',
+                    icon: Icons.insert_drive_file_outlined,
+                    selected: !_bulkUpload,
+                    onTap: () => setState(() => _bulkUpload = false),
+                  ),
+                  const SizedBox(width: 12),
+                  _ModeChip(
+                    label: 'Bulk upload',
+                    icon: Icons.folder_copy_outlined,
+                    selected: _bulkUpload,
+                    onTap: () => setState(() => _bulkUpload = true),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
-    );
-  }
-
+    ),
+  );
+}
   // ── Upload progress list (appears below drop zone) ──────────────────────────
   Widget _buildProgressSection() {
     if (_uploads.isEmpty) return const SizedBox.shrink();
