@@ -1,3 +1,4 @@
+import 'package:dotted_border/dotted_border.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -30,11 +31,12 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
   String? _filePath;
   int? _fileSize;
   String? _fileExtension;
+  bool _bulkUpload = false;
 
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.any,
-      allowMultiple: false,
+      allowMultiple: _bulkUpload,
     );
 
     if (result == null || result.files.isEmpty) {
@@ -81,33 +83,132 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
             decoration: BoxDecoration(
               color: Colors.blue.shade50,
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.blue.shade100),
             ),
-            child: Column(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.upload_file, size: 48, color: Colors.blue),
-                const SizedBox(height: 16),
-                const Text(
-                  'Drop files here or click to browse',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                const Padding(
+                  padding: EdgeInsets.only(right: 16.0),
+                  child: Icon(Icons.info_outline, size: 28, color: Colors.blue),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Any file type · Up to 20 MB per file',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _pickFile,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Simulated demo — files are processed client-side only, nothing is stored.',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Upload 1–3 files to see individual per-file progress bars. Upload 4 or more files to trigger the bulk notification flow.',
+                        style: TextStyle(fontSize: 14, color: Colors.black54),
+                      ),
+                    ],
                   ),
-                  child: const Text('Select file'),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          DottedBorder(
+            options: const RoundedRectDottedBorderOptions(
+              radius: Radius.circular(20),
+              strokeWidth: 1.8,
+              color: Colors.blue,
+              dashPattern: [8, 6],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: _pickFile,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: const Icon(Icons.upload_file, size: 32, color: Colors.blue),
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Drop files here or click to browse',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Any file type · Up to 20 MB per file',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.black54),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Single file'),
+                            selected: !_bulkUpload,
+                            selectedColor: Colors.blue.shade100,
+                            backgroundColor: Colors.grey.shade100,
+                            labelStyle: TextStyle(
+                              color: !_bulkUpload ? Colors.blue : Colors.grey.shade700,
+                            ),
+                            onSelected: (selected) {
+                              setState(() {
+                                _bulkUpload = !selected;
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 12),
+                          ChoiceChip(
+                            label: const Text('Bulk upload'),
+                            selected: _bulkUpload,
+                            selectedColor: Colors.blue.shade100,
+                            backgroundColor: Colors.grey.shade100,
+                            labelStyle: TextStyle(
+                              color: _bulkUpload ? Colors.blue : Colors.grey.shade700,
+                            ),
+                            onSelected: (selected) {
+                              setState(() {
+                                _bulkUpload = selected;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          'Try 4+ files to trigger notifications',
+                          style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 24),
