@@ -25,13 +25,13 @@ void main() async {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Data model — one instance per file being uploaded
+// Upload item model
 // ─────────────────────────────────────────────────────────────────────────────
 class UploadItem {
   final String fileName;
   final int fileSize;
-  double progress;        // 0.0 → 1.0
-  String status;          // 'uploading' | 'done' | 'error'
+  double progress;
+  String status; // 'uploading' | 'done' | 'error'
   String? downloadUrl;
 
   UploadItem({
@@ -42,7 +42,7 @@ class UploadItem {
   });
 
   String get sizeLabel {
-    if (fileSize < 1024) return '${fileSize} B';
+    if (fileSize < 1024) return '$fileSize B';
     if (fileSize < 1024 * 1024) return '${(fileSize / 1024).toStringAsFixed(1)} KB';
     return '${(fileSize / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
@@ -62,7 +62,6 @@ class FilePickerApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: const Color(0xFFF4F6FA),
-        fontFamily: 'sans-serif',
       ),
       home: const FilePickerHomePage(),
     );
@@ -98,14 +97,19 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
       final item = UploadItem(
         fileName: picked.name,
         fileSize: picked.size,
+        progress: 0,
+        status: 'uploading',
       );
 
-      setState(() => _uploads.insert(0, item)); // newest at the top
-      _uploadToFirebase(picked, item);           // fire-and-forget per file
+      // Show row immediately before upload starts
+      setState(() => _uploads.insert(0, item));
+
+      // Start upload — non-blocking
+      _uploadToFirebase(picked, item);
     }
   }
 
-  // ── Upload one file to Firebase Storage ────────────────────────────────────
+  // ── Upload one file ─────────────────────────────────────────────────────────
   Future<void> _uploadToFirebase(PlatformFile picked, UploadItem item) async {
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -115,11 +119,12 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
 
       final task = ref.putFile(File(picked.path!));
 
-      // Stream fires on every chunk — update progress bar in real time
+      // Stream fires on every uploaded chunk
       task.snapshotEvents.listen((snapshot) {
         if (!mounted) return;
         setState(() {
           item.progress = snapshot.bytesTransferred / snapshot.totalBytes;
+          item.status   = 'uploading';
         });
       });
 
@@ -135,7 +140,10 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => item.status = 'error');
+      setState(() {
+        item.progress = 0;
+        item.status   = 'error';
+      });
     }
   }
 
@@ -167,80 +175,91 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
 
   // ── Drop zone ───────────────────────────────────────────────────────────────
   Widget _buildDropZone() {
-  return DottedBorder(
-    borderType: BorderType.RRect,
-    radius: const Radius.circular(20),
-    strokeWidth: 1.8,
-    color: Colors.blue,
-    dashPattern: const [8, 6],
-    child: Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
+    return DottedBorder(
+      borderType: BorderType.RRect,
+      radius: const Radius.circular(20),
+      strokeWidth: 1.8,
+      color: Colors.blue,
+      dashPattern: const [8, 6],
+      child: Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
-        onTap: _pickAndUpload,
-        splashColor: Colors.blue.shade50,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue.shade100, Colors.blue.shade50],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: _pickAndUpload,
+          splashColor: Colors.blue.shade50,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              children: [
+                // Upload icon
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade100, Colors.blue.shade50],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  borderRadius: BorderRadius.circular(20),
+                  child: Icon(
+                    Icons.upload_file_rounded,
+                    size: 36,
+                    color: Colors.blue.shade600,
+                  ),
                 ),
-                child: Icon(Icons.upload_file_rounded, size: 36, color: Colors.blue.shade600),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Drop files here or click to browse',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.black87),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Any file type · Up to 20 MB per file',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-              ),
-              const SizedBox(height: 28),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _ModeChip(
-                    label: 'Single file',
-                    icon: Icons.insert_drive_file_outlined,
-                    selected: !_bulkUpload,
-                    onTap: () => setState(() => _bulkUpload = false),
+                const SizedBox(height: 20),
+                const Text(
+                  'Drop files here or click to browse',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
                   ),
-                  const SizedBox(width: 12),
-                  _ModeChip(
-                    label: 'Bulk upload',
-                    icon: Icons.folder_copy_outlined,
-                    selected: _bulkUpload,
-                    onTap: () => setState(() => _bulkUpload = true),
-                  ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Any file type · Up to 20 MB per file',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                ),
+                const SizedBox(height: 28),
+                // Single / Bulk toggle
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _ModeChip(
+                      label: 'Single file',
+                      icon: Icons.insert_drive_file_outlined,
+                      selected: !_bulkUpload,
+                      onTap: () => setState(() => _bulkUpload = false),
+                    ),
+                    const SizedBox(width: 12),
+                    _ModeChip(
+                      label: 'Bulk upload',
+                      icon: Icons.folder_copy_outlined,
+                      selected: _bulkUpload,
+                      onTap: () => setState(() => _bulkUpload = true),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
-  // ── Upload progress list (appears below drop zone) ──────────────────────────
+    );
+  }
+
+  // ── Progress section (appears below drop zone after first upload) ───────────
   Widget _buildProgressSection() {
     if (_uploads.isEmpty) return const SizedBox.shrink();
 
@@ -278,21 +297,34 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
             const Spacer(),
             if (_uploads.any((u) => u.status == 'done'))
               GestureDetector(
-                onTap: () => setState(() => _uploads.removeWhere((u) => u.status == 'done')),
+                onTap: () => setState(
+                  () => _uploads.removeWhere((u) => u.status == 'done'),
+                ),
                 child: Text(
                   'Clear done',
-                  style: TextStyle(fontSize: 12, color: Colors.blue.shade400, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.blue.shade400,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
           ],
         ),
         const SizedBox(height: 12),
-        ..._uploads.map((item) => _UploadRow(item: item)),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _uploads.length,
+          itemBuilder: (context, index) {
+            return _UploadRow(item: _uploads[index]);
+          },
+        ),
       ],
     );
   }
 
-  // ── Document Upload tab ──────────────────────────────────────────────────────
+  // ── Document Upload tab ─────────────────────────────────────────────────────
   Widget _buildDocumentUploadPage() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -302,14 +334,14 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
           _buildInfoBanner(),
           const SizedBox(height: 20),
           _buildDropZone(),
-          _buildProgressSection(),   // ← progress rows appear here
+          _buildProgressSection(), // ← progress rows appear here
           const SizedBox(height: 40),
         ],
       ),
     );
   }
 
-  // ── AI Assistant tab ─────────────────────────────────────────────────────────
+  // ── AI Assistant tab ────────────────────────────────────────────────────────
   Widget _buildAiAssistantPage() {
     final doneUploads = _uploads.where((u) => u.status == 'done').toList();
 
@@ -338,11 +370,13 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.cloud_upload_outlined, color: Colors.grey.shade400, size: 28),
+                  Icon(Icons.cloud_upload_outlined,
+                      color: Colors.grey.shade400, size: 28),
                   const SizedBox(width: 14),
                   const Expanded(
                     child: Text(
-                      'No files uploaded yet. Upload a document in the Document Upload tab to enable AI-powered analysis.',
+                      'No files uploaded yet. Upload a document in the '
+                      'Document Upload tab to enable AI-powered analysis.',
                       style: TextStyle(color: Colors.black54, height: 1.5),
                     ),
                   ),
@@ -350,45 +384,49 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
               ),
             )
           else
-            ...doneUploads.map((u) => Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.green.shade100),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.description_outlined, color: Colors.green.shade400, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      u.fileName,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis,
+            ...doneUploads.map(
+              (u) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.green.shade100),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.description_outlined,
+                        color: Colors.green.shade400, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        u.fileName,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Ready',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green.shade500,
+                    Text(
+                      'Ready',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green.shade500,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            )),
+            ),
         ],
       ),
     );
   }
 
-  // ── Scaffold ─────────────────────────────────────────────────────────────────
+  // ── Scaffold ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final uploading = _uploads.where((u) => u.status == 'uploading').length;
+    final uploadingCount =
+        _uploads.where((u) => u.status == 'uploading').length;
 
     return DefaultTabController(
       length: 2,
@@ -405,7 +443,8 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
                 color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.folder_open_rounded, color: Colors.blue.shade600, size: 22),
+              child: Icon(Icons.folder_open_rounded,
+                  color: Colors.blue.shade600, size: 22),
             ),
           ),
           title: const Text(
@@ -422,22 +461,24 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
               alignment: Alignment.center,
               children: [
                 IconButton(
-                  icon: Icon(Icons.notifications_outlined, color: Colors.grey.shade700),
+                  icon: Icon(Icons.notifications_outlined,
+                      color: Colors.grey.shade700),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          uploading > 0
-                            ? '$uploading file(s) uploading…'
-                            : 'No new notifications',
+                          uploadingCount > 0
+                              ? '$uploadingCount file(s) uploading…'
+                              : 'No new notifications',
                         ),
                         behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                     );
                   },
                 ),
-                if (uploading > 0)
+                if (uploadingCount > 0)
                   Positioned(
                     top: 10,
                     right: 10,
@@ -459,7 +500,8 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
             unselectedLabelColor: Colors.grey.shade500,
             indicatorColor: Colors.blue.shade600,
             indicatorWeight: 3,
-            labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+            labelStyle: const TextStyle(
+                fontWeight: FontWeight.w700, fontSize: 13.5),
             tabs: const [
               Tab(text: 'Document Upload'),
               Tab(text: 'AI Assistant'),
@@ -478,7 +520,7 @@ class _FilePickerHomePageState extends State<FilePickerHomePage> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Mode chip (Single / Bulk toggle)
+// Mode chip widget
 // ─────────────────────────────────────────────────────────────────────────────
 class _ModeChip extends StatelessWidget {
   final String label;
@@ -504,13 +546,23 @@ class _ModeChip extends StatelessWidget {
           color: selected ? Colors.blue.shade600 : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(999),
           boxShadow: selected
-              ? [BoxShadow(color: Colors.blue.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 3))]
+              ? [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  )
+                ]
               : [],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 15, color: selected ? Colors.white : Colors.grey.shade600),
+            Icon(
+              icon,
+              size: 15,
+              color: selected ? Colors.white : Colors.grey.shade600,
+            ),
             const SizedBox(width: 6),
             Text(
               label,
@@ -528,11 +580,11 @@ class _ModeChip extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Upload row — one per file, shows name, size, progress bar, status
+// Upload row widget
 // ─────────────────────────────────────────────────────────────────────────────
 class _UploadRow extends StatelessWidget {
   final UploadItem item;
-  const _UploadRow({required this.item});
+  const _UploadRow({required this.item, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -551,8 +603,7 @@ class _UploadRow extends StatelessWidget {
             ? Icons.check_circle_outline_rounded
             : Icons.cloud_upload_outlined;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
@@ -570,7 +621,8 @@ class _UploadRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Top row: icon  name  size  status label ───────────────────────
+
+          // ── File name + size + status badge ───────────────────────────
           Row(
             children: [
               Icon(statusIcon, color: accent, size: 22),
@@ -591,15 +643,16 @@ class _UploadRow extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       item.sizeLabel,
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey.shade500),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 10),
-              // Status badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: accent.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(999),
@@ -622,41 +675,24 @@ class _UploadRow extends StatelessWidget {
 
           const SizedBox(height: 14),
 
-          // ── Progress bar ──────────────────────────────────────────────────
-          Stack(
-            children: [
-              // Background track
-              Container(
-                height: 7,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              // Filled portion
-              AnimatedFractionallySizedBox(
-                duration: const Duration(milliseconds: 200),
-                widthFactor: isError ? 1.0 : item.progress,
-                child: Container(
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: accent,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: isDone || isError
-                        ? []
-                        : [BoxShadow(color: accent.withOpacity(0.4), blurRadius: 6, offset: const Offset(0, 2))],
-                  ),
-                ),
-              ),
-            ],
+          // ── Progress bar ──────────────────────────────────────────────
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: isError ? 1.0 : item.progress,
+              minHeight: 7,
+              backgroundColor: Colors.grey.shade100,
+              valueColor: AlwaysStoppedAnimation<Color>(accent),
+            ),
           ),
 
-          // ── Download link (shown when done) ───────────────────────────────
+          // ── Download URL when done ────────────────────────────────────
           if (isDone && item.downloadUrl != null) ...[
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.link_rounded, size: 14, color: Colors.blue.shade400),
+                Icon(Icons.link_rounded,
+                    size: 14, color: Colors.blue.shade400),
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
@@ -673,7 +709,7 @@ class _UploadRow extends StatelessWidget {
             ),
           ],
 
-          // ── Error message ──────────────────────────────────────────────────
+          // ── Error message ─────────────────────────────────────────────
           if (isError) ...[
             const SizedBox(height: 8),
             Text(
